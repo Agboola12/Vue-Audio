@@ -7,15 +7,24 @@
 </template>
 
 <script>
-import { InferenceSession } from 'onnxruntime-web'; // Import ONNX for EnCodec
+import { InferenceSession, Tensor } from 'onnxruntime-web';
+import { createFFmpeg, fetchFile } from '@ffmpeg/ffmpeg';
 
 export default {
   data() {
     return {
       audioFile: null,
+      ffmpegInstance: null, // Store ffmpeg instance
     };
   },
   methods: {
+    async loadFFmpeg() {
+      // Initialize ffmpeg only once
+      if (!this.ffmpegInstance) {
+        this.ffmpegInstance = createFFmpeg({ log: true });
+        await this.ffmpegInstance.load();
+      }
+    },
     handleFileUpload(event) {
       this.audioFile = event.target.files[0];
     },
@@ -25,7 +34,9 @@ export default {
         return;
       }
 
-      // Convert the audio to 24kHz using ffmpeg (via WebAssembly)
+      await this.loadFFmpeg();  // Ensure ffmpeg is loaded
+
+      // Convert the audio to 24kHz using ffmpeg
       const convertedAudioBuffer = await this.convertAudioTo24kHz(this.audioFile);
 
       // Encode the audio using EnCodec (ONNX runtime)
@@ -43,15 +54,10 @@ export default {
       alert("Audio uploaded and sent successfully!");
     },
     async convertAudioTo24kHz(file) {
-      // Use ffmpeg to convert the audio to 24kHz (e.g., with ffmpeg.wasm)
-      // This is a simplified example. You'll need to set up ffmpeg.wasm in your project.
-      const ffmpeg = await import('@ffmpeg/ffmpeg');
-      const { createFFmpeg } = ffmpeg;
-      const ffmpegInstance = createFFmpeg({ log: true });
-      await ffmpegInstance.load();
-      
-      const audioData = await file.arrayBuffer();
-      ffmpegInstance.FS('writeFile', 'input.wav', new Uint8Array(audioData));
+      const { ffmpegInstance } = this;
+      const audioData = await fetchFile(file); // Use fetchFile from @ffmpeg/ffmpeg
+
+      ffmpegInstance.FS('writeFile', 'input.wav', audioData);
 
       await ffmpegInstance.run('-i', 'input.wav', '-ar', '24000', 'output.wav');
       const outputData = ffmpegInstance.FS('readFile', 'output.wav');
@@ -59,9 +65,9 @@ export default {
       return outputData.buffer;
     },
     async encodeWithEnCodec(audioBuffer) {
-      // Load the EnCodec model using ONNX runtime and encode the audioBuffer
       const session = await InferenceSession.create('./encodec_model.onnx');
-      const audioTensor = new Float32Array(audioBuffer); // Ensure this matches the model input
+
+      const audioTensor = new Tensor('float32', new Float32Array(audioBuffer), [1, audioBuffer.byteLength]);
 
       const input = { audio: audioTensor };
       const results = await session.run(input);
