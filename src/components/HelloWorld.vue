@@ -14,12 +14,11 @@ export default {
   data() {
     return {
       audioFile: null,
-      ffmpegInstance: null, // Store ffmpeg instance
+      ffmpegInstance: null, 
     };
   },
   methods: {
     async loadFFmpeg() {
-      // Initialize ffmpeg only once
       if (!this.ffmpegInstance) {
         this.ffmpegInstance = createFFmpeg({ log: true });
         await this.ffmpegInstance.load();
@@ -34,15 +33,12 @@ export default {
         return;
       }
 
-      await this.loadFFmpeg();  // Ensure ffmpeg is loaded
+      await this.loadFFmpeg();  
 
-      // Convert the audio to 24kHz using ffmpeg
       const convertedAudioBuffer = await this.convertAudioTo24kHz(this.audioFile);
 
-      // Encode the audio using EnCodec (ONNX runtime)
       const encodedAudio = await this.encodeWithEnCodec(convertedAudioBuffer);
 
-      // Send the encoded audio to the backend
       const formData = new FormData();
       formData.append("encodedAudio", new Blob([encodedAudio]), "encoded_audio.bin");
 
@@ -55,7 +51,7 @@ export default {
     },
     async convertAudioTo24kHz(file) {
       const { ffmpegInstance } = this;
-      const audioData = await fetchFile(file); // Use fetchFile from @ffmpeg/ffmpeg
+      const audioData = await fetchFile(file); 
 
       ffmpegInstance.FS('writeFile', 'input.wav', audioData);
 
