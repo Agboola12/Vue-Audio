@@ -15,6 +15,7 @@
     "@fontsource/roboto": "^5.0.14",
     "@mui/material": "^6.0.2",
     "axios": "^1.7.7",
+    "lamejs": "^1.2.1",
     "onnxruntime-web": "^1.19.2",
     "vue": "^3.4.37",
     "vue-router": "^4.4.3",
